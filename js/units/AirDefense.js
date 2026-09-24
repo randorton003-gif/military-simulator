@@ -1,6 +1,6 @@
 /**
- * Air Defense systems — SAMs, short-range, sensors, point defense.
- * Compartmentalized so air-defense logic can grow independently.
+ * Air Defense — SAM, SHORAD, Radar, CIWS.
+ * Each carries realistic default range values for range-ring display.
  */
 
 class SAM extends BaseUnit {
@@ -8,14 +8,10 @@ class SAM extends BaseUnit {
     super({
       ...opts,
       type: "sam",
-      category: UNIT_CATEGORY.AIR_DEFENSE
+      category: UNIT_CATEGORY.AIR_DEFENSE,
+      detectionRangeKm: opts.detectionRangeKm ?? 60,
+      engagementRangeKm: opts.engagementRangeKm ?? 40
     });
-    this.engagementRangeKm = opts.engagementRangeKm || 40;
-  }
-
-  toPopupHtml() {
-    return super.toPopupHtml() +
-      `<br/><em>Engagement range: ~${this.engagementRangeKm} km</em>`;
   }
 }
 
@@ -24,14 +20,10 @@ class SHORAD extends BaseUnit {
     super({
       ...opts,
       type: "shorad",
-      category: UNIT_CATEGORY.AIR_DEFENSE
+      category: UNIT_CATEGORY.AIR_DEFENSE,
+      detectionRangeKm: opts.detectionRangeKm ?? 15,
+      engagementRangeKm: opts.engagementRangeKm ?? 8
     });
-    this.engagementRangeKm = opts.engagementRangeKm || 8;
-  }
-
-  toPopupHtml() {
-    return super.toPopupHtml() +
-      `<br/><em>SHORAD range: ~${this.engagementRangeKm} km</em>`;
   }
 }
 
@@ -40,14 +32,10 @@ class Radar extends BaseUnit {
     super({
       ...opts,
       type: "radar",
-      category: UNIT_CATEGORY.AIR_DEFENSE
+      category: UNIT_CATEGORY.AIR_DEFENSE,
+      detectionRangeKm: opts.detectionRangeKm ?? 120,
+      engagementRangeKm: 0
     });
-    this.detectionRangeKm = opts.detectionRangeKm || 120;
-  }
-
-  toPopupHtml() {
-    return super.toPopupHtml() +
-      `<br/><em>Detection range: ~${this.detectionRangeKm} km</em>`;
   }
 }
 
@@ -56,14 +44,10 @@ class CIWS extends BaseUnit {
     super({
       ...opts,
       type: "ciws",
-      category: UNIT_CATEGORY.AIR_DEFENSE
+      category: UNIT_CATEGORY.AIR_DEFENSE,
+      detectionRangeKm: opts.detectionRangeKm ?? 5,
+      engagementRangeKm: opts.engagementRangeKm ?? 3
     });
-    this.engagementRangeKm = opts.engagementRangeKm || 3;
-  }
-
-  toPopupHtml() {
-    return super.toPopupHtml() +
-      `<br/><em>Point defense: ~${this.engagementRangeKm} km</em>`;
   }
 }
 

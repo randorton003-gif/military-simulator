@@ -11,7 +11,6 @@
 </head>
 <body>
   <div id="app">
-    <!-- Top Command Bar -->
     <header class="command-bar">
       <div class="brand">
         <span class="brand-icon">⬡</span>
@@ -20,20 +19,30 @@
           <span class="brand-sub">Panopticon-class Command Interface</span>
         </div>
       </div>
+
+      <!-- Simulation Transport Controls -->
+      <div class="transport">
+        <button id="btnPlay" class="transport-btn" title="Play">▶</button>
+        <button id="btnPause" class="transport-btn" title="Pause" disabled>⏸</button>
+        <button id="btnSpeed" class="transport-btn speed-btn" title="Toggle 1x / 2x">1×</button>
+        <span class="transport-sep"></span>
+        <button id="btnRanges" class="transport-btn toggle on" title="Toggle range rings">RADAR</button>
+        <button id="btnRoutes" class="transport-btn toggle on" title="Toggle routes">ROUTES</button>
+      </div>
+
       <div class="status-indicators">
-        <span class="status-pill online">SYSTEM ONLINE</span>
+        <span id="simStatus" class="status-pill">PAUSED</span>
         <span id="unitCount" class="status-pill">0 UNITS</span>
         <span id="scenarioTitle" class="status-pill muted">NO SCENARIO</span>
       </div>
     </header>
 
     <div class="workspace">
-      <!-- Left Sidebar -->
       <aside class="sidebar" id="sidebar">
         <section class="panel">
           <h2 class="panel-title">Scenario Prompt</h2>
           <textarea id="promptInput" rows="4"
-            placeholder="Describe a scenario…&#10;e.g. Blue force defense west of Kyiv with tanks, infantry and SAM coverage against red air threat"></textarea>
+            placeholder="Describe a scenario…&#10;e.g. Blue defense west of Kyiv with tanks, infantry and SAM coverage against red air threat"></textarea>
           <div class="btn-row">
             <button id="btnGenerate" class="btn primary">Generate</button>
             <button id="btnClear" class="btn ghost">Clear</button>
@@ -51,12 +60,10 @@
         </section>
       </aside>
 
-      <!-- Map -->
       <main class="map-area">
         <div id="map"></div>
       </main>
 
-      <!-- Right Log Panel -->
       <aside class="log-panel" id="logPanel">
         <h2 class="panel-title">Operations Log</h2>
         <div id="logEntries" class="log-entries"></div>
@@ -64,14 +71,12 @@
     </div>
   </div>
 
-  <!-- Leaflet -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- Core -->
   <script src="js/core/constants.js"></script>
   <script src="js/core/utils.js"></script>
+  <script src="js/core/Simulation.js"></script>
 
-  <!-- Units (order matters: Base → specializations → Factory) -->
   <script src="js/units/BaseUnit.js"></script>
   <script src="js/units/GroundUnits.js"></script>
   <script src="js/units/AirUnits.js"></script>
@@ -80,13 +85,10 @@
   <script src="js/units/Facilities.js"></script>
   <script src="js/units/UnitFactory.js"></script>
 
-  <!-- Map, AI, UI -->
   <script src="js/map/MapController.js"></script>
   <script src="js/ai/ScenarioGenerator.js"></script>
   <script src="js/ui/Sidebar.js"></script>
   <script src="js/ui/LogPanel.js"></script>
-
-  <!-- App entry -->
   <script src="js/app.js"></script>
 </body>
 </html>

@@ -1,47 +1,50 @@
 # Military Simulator (Panopticon-inspired)
 
-A clean, modular, professional web-based military simulation platform.
+Professional web-based military simulation with clean modular architecture.
 
-Inspired by [Panopticon AI](https://panopticon-ai.com/) — built for clarity, extensibility, and real-world map visualization using OpenStreetMap.
+## Features (v3)
 
-## Design Goals
+- **Play / Pause / 2× speed** — transport controls in the command bar
+- **Dictated movements** — units follow waypoints when simulation is running
+- **Radar & engagement range rings** — toggleable detection/engagement circles
+- **Route lines** — dashed paths show planned movement
+- **Simple black icons** — monochrome NATO-style symbols with side-colored borders
+- **Modular unit system** — Ground, Air, Naval, Air Defense, Facilities
+- **Prompt-driven scenarios** on OpenStreetMap
 
-- **Compartmentalized code** — every concern lives in its own module
-- **Clear unit hierarchy** — BaseUnit → specialized types (Ground, Air, Naval, AirDefense, Facility…)
-- **Professional command-center UI**
-- **Prompt-driven scenario generation**
-- **Easy to extend** with new unit types or real AI backends
+## Controls
+
+| Control | Action |
+|---------|--------|
+| ▶ Play  | Start simulation (units move along waypoints) |
+| ⏸ Pause | Stop simulation |
+| 1× / 2× | Toggle simulation speed |
+| RADAR   | Toggle range rings |
+| ROUTES  | Toggle waypoint paths |
 
 ## Project Structure
 
 ```
-├── index.html
-├── css/
-│   └── styles.css              # Professional dark theme
-├── js/
-│   ├── core/
-│   │   ├── constants.js        # Shared constants & enums
-│   │   └── utils.js            # Small helpers
-│   ├── units/
-│   │   ├── BaseUnit.js         # Abstract base class
-│   │   ├── GroundUnits.js      # Tank, Infantry, Artillery, APC
-│   │   ├── AirUnits.js         # Fighter, Bomber, Helicopter, UAV
-│   │   ├── NavalUnits.js       # Destroyer, Frigate, Carrier, Submarine
-│   │   ├── AirDefense.js       # SAM, SHORAD, Radar, CIWS
-│   │   ├── Facilities.js       # Airbase, HQ, Depot, Port
-│   │   └── UnitFactory.js      # Creates the right unit from type string
-│   ├── map/
-│   │   └── MapController.js    # Leaflet + OpenStreetMap
-│   ├── ai/
-│   │   └── ScenarioGenerator.js# Prompt → structured scenario
-│   ├── ui/
-│   │   ├── Sidebar.js
-│   │   └── LogPanel.js
-│   └── app.js                  # Application entry point
-└── README.md
+js/
+├── core/
+│   ├── constants.js      # Icons, speeds, locations
+│   ├── utils.js
+│   └── Simulation.js     # Play/pause/speed engine
+├── units/
+│   ├── BaseUnit.js       # Waypoints + ranges
+│   ├── GroundUnits.js
+│   ├── AirUnits.js
+│   ├── NavalUnits.js
+│   ├── AirDefense.js     # SAM, SHORAD, Radar, CIWS
+│   ├── Facilities.js
+│   └── UnitFactory.js
+├── map/MapController.js  # Markers, rings, routes
+├── ai/ScenarioGenerator.js
+├── ui/
+└── app.js
 ```
 
-## How to Run
+## Run
 
 ```bash
 git clone https://github.com/randorton003-gif/military-simulator.git
@@ -49,23 +52,7 @@ cd military-simulator
 python -m http.server 8000
 ```
 
-Open http://localhost:8000
-
-## Unit Categories
-
-| Category     | Types                                      |
-|--------------|--------------------------------------------|
-| Ground       | Tank, Infantry, Artillery, APC             |
-| Air          | Fighter, Bomber, Helicopter, UAV           |
-| Naval        | Destroyer, Frigate, Carrier, Submarine     |
-| Air Defense  | SAM, SHORAD, Radar, CIWS                   |
-| Facility     | Airbase, HQ, Depot, Port                   |
-
-## Extending
-
-1. Add a new class in the appropriate `units/*.js` file (extend `BaseUnit`)
-2. Register it in `UnitFactory.js`
-3. Add an icon mapping in `constants.js`
+Open http://localhost:8000 → Generate a scenario → press **▶**
 
 ## License
 
