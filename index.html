@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Military Simulator</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>⚔ Military Simulator</h1>
+      <p class="subtitle">Prompt → AI scenario → live OpenStreetMap battlefield</p>
+    </header>
+
+    <div class="main">
+      <aside class="sidebar">
+        <section class="prompt-box">
+          <label for="prompt">Scenario Prompt</label>
+          <textarea id="prompt" rows="4" placeholder="e.g. Defensive line west of Kyiv with 3 tank battalions and infantry support..."></textarea>
+          <button id="generateBtn">Generate Scenario</button>
+          <button id="clearBtn" class="secondary">Clear Map</button>
+        </section>
+
+        <section class="unit-list">
+          <h2>Active Units</h2>
+          <ul id="unitList"></ul>
+        </section>
+
+        <section class="log">
+          <h2>AI Log</h2>
+          <div id="log"></div>
+        </section>
+      </aside>
+
+      <div id="map"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
