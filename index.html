@@ -3,45 +3,90 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Military Simulator</title>
+  <title>Military Simulator — Command Center</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
 </head>
 <body>
   <div id="app">
-    <header>
-      <h1>⚔ Military Simulator</h1>
-      <p class="subtitle">Prompt → AI scenario → live OpenStreetMap battlefield</p>
+    <!-- Top Command Bar -->
+    <header class="command-bar">
+      <div class="brand">
+        <span class="brand-icon">⬡</span>
+        <div>
+          <h1>Military Simulator</h1>
+          <span class="brand-sub">Panopticon-class Command Interface</span>
+        </div>
+      </div>
+      <div class="status-indicators">
+        <span class="status-pill online">SYSTEM ONLINE</span>
+        <span id="unitCount" class="status-pill">0 UNITS</span>
+        <span id="scenarioTitle" class="status-pill muted">NO SCENARIO</span>
+      </div>
     </header>
 
-    <div class="main">
-      <aside class="sidebar">
-        <section class="prompt-box">
-          <label for="prompt">Scenario Prompt</label>
-          <textarea id="prompt" rows="4" placeholder="e.g. Defensive line west of Kyiv with 3 tank battalions and infantry support..."></textarea>
-          <button id="generateBtn">Generate Scenario</button>
-          <button id="clearBtn" class="secondary">Clear Map</button>
+    <div class="workspace">
+      <!-- Left Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <section class="panel">
+          <h2 class="panel-title">Scenario Prompt</h2>
+          <textarea id="promptInput" rows="4"
+            placeholder="Describe a scenario…&#10;e.g. Blue force defense west of Kyiv with tanks, infantry and SAM coverage against red air threat"></textarea>
+          <div class="btn-row">
+            <button id="btnGenerate" class="btn primary">Generate</button>
+            <button id="btnClear" class="btn ghost">Clear</button>
+          </div>
         </section>
 
-        <section class="unit-list">
-          <h2>Active Units</h2>
-          <ul id="unitList"></ul>
+        <section class="panel">
+          <h2 class="panel-title">Force Composition</h2>
+          <div id="forceSummary" class="force-summary"></div>
         </section>
 
-        <section class="log">
-          <h2>AI Log</h2>
-          <div id="log"></div>
+        <section class="panel flex-grow">
+          <h2 class="panel-title">Active Units</h2>
+          <ul id="unitList" class="unit-list"></ul>
         </section>
       </aside>
 
-      <div id="map"></div>
+      <!-- Map -->
+      <main class="map-area">
+        <div id="map"></div>
+      </main>
+
+      <!-- Right Log Panel -->
+      <aside class="log-panel" id="logPanel">
+        <h2 class="panel-title">Operations Log</h2>
+        <div id="logEntries" class="log-entries"></div>
+      </aside>
     </div>
   </div>
 
+  <!-- Leaflet -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="js/icons.js"></script>
-  <script src="js/ai.js"></script>
-  <script src="js/map.js"></script>
+
+  <!-- Core -->
+  <script src="js/core/constants.js"></script>
+  <script src="js/core/utils.js"></script>
+
+  <!-- Units (order matters: Base → specializations → Factory) -->
+  <script src="js/units/BaseUnit.js"></script>
+  <script src="js/units/GroundUnits.js"></script>
+  <script src="js/units/AirUnits.js"></script>
+  <script src="js/units/NavalUnits.js"></script>
+  <script src="js/units/AirDefense.js"></script>
+  <script src="js/units/Facilities.js"></script>
+  <script src="js/units/UnitFactory.js"></script>
+
+  <!-- Map, AI, UI -->
+  <script src="js/map/MapController.js"></script>
+  <script src="js/ai/ScenarioGenerator.js"></script>
+  <script src="js/ui/Sidebar.js"></script>
+  <script src="js/ui/LogPanel.js"></script>
+
+  <!-- App entry -->
   <script src="js/app.js"></script>
 </body>
 </html>

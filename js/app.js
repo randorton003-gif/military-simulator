@@ -1,65 +1,53 @@
 /**
- * Main application logic
+ * Application entry point.
+ * Wires UI events to ScenarioGenerator + MapController + panels.
  */
 
 document.addEventListener("DOMContentLoaded", () => {
-  initMap();
+  // Initialize subsystems
+  MapController.init("map");
+  Sidebar.init();
+  LogPanel.init();
 
-  const promptEl = document.getElementById("prompt");
-  const generateBtn = document.getElementById("generateBtn");
-  const clearBtn = document.getElementById("clearBtn");
-  const unitListEl = document.getElementById("unitList");
-  const logEl = document.getElementById("log");
+  const promptInput = document.getElementById("promptInput");
+  const btnGenerate = document.getElementById("btnGenerate");
+  const btnClear = document.getElementById("btnClear");
 
   let currentScenario = null;
 
-  function renderUnitList(units) {
-    unitListEl.innerHTML = "";
-    if (!units || units.length === 0) {
-      unitListEl.innerHTML = "<li style=\"color:var(--muted)\">No units yet</li>";
-      return;
-    }
-    units.forEach(u => {
-      const li = document.createElement("li");
-      li.innerHTML = `
-        <span class="icon">${getUnitIconSvg(u.type)}</span>
-        <span>${u.name} <small style="color:var(--muted)">(${u.type})</small></span>
-      `;
-      li.addEventListener("click", () => focusUnit(u.id));
-      unitListEl.appendChild(li);
-    });
-  }
-
-  function appendLog(entries) {
-    entries.forEach(text => {
-      const div = document.createElement("div");
-      div.className = "entry";
-      div.textContent = text;
-      logEl.prepend(div);
-    });
-  }
-
-  generateBtn.addEventListener("click", () => {
-    const prompt = promptEl.value;
-    const scenario = generateScenarioFromPrompt(prompt);
+  function runScenario(prompt) {
+    const scenario = ScenarioGenerator.generate(prompt);
     currentScenario = scenario;
 
-    applyScenario(scenario);
-    renderUnitList(scenario.units);
-    appendLog(scenario.logEntries);
+    MapController.applyScenario(scenario);
+    Sidebar.render(scenario);
+    LogPanel.write(scenario.log, "info");
+    LogPanel.write(`▶ ${scenario.title}`, "success");
+  }
 
-    // Optional: flash title in log
-    appendLog([`▶ ${scenario.title}`]);
+  btnGenerate.addEventListener("click", () => {
+    runScenario(promptInput.value);
   });
 
-  clearBtn.addEventListener("click", () => {
-    clearAllMarkers();
-    renderUnitList([]);
+  btnClear.addEventListener("click", () => {
+    MapController.clear();
+    Sidebar.clear();
     currentScenario = null;
-    appendLog(["Map cleared."]);
+    LogPanel.write("Map and units cleared.", "warn");
   });
 
-  // Seed with a sample scenario on first load
-  promptEl.value = "Defensive position west of Kyiv with tanks, infantry and artillery";
-  generateBtn.click();
+  // Allow Enter+Ctrl to generate
+  promptInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      runScenario(promptInput.value);
+    }
+  });
+
+  // Seed with a rich example on load
+  promptInput.value =
+    "Blue force defense west of Kyiv with tanks, infantry, artillery and SAM coverage against red air threat";
+  runScenario(promptInput.value);
+
+  LogPanel.write("System online. Ready for scenario generation.", "success");
 });

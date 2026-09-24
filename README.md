@@ -1,35 +1,71 @@
-# Military Simulator
+# Military Simulator (Panopticon-inspired)
 
-AI-driven military simulator game that generates **maps**, **units**, and **icons** from natural-language prompts.
+A clean, modular, professional web-based military simulation platform.
 
-## Features
+Inspired by [Panopticon AI](https://panopticon-ai.com/) — built for clarity, extensibility, and real-world map visualization using OpenStreetMap.
 
-- **Real-world maps** powered by OpenStreetMap (Leaflet)
-- **Prompt-based scenario generation** — type something like:
-  - `"Create a defensive position around Kyiv with tanks and infantry"`
-  - `"Amphibious assault on Taiwan beaches with naval and air support"`
-  - `"Urban warfare in a fictional city called New Bastion"`
-- **Dynamic icons** generated on the fly for units (tanks, infantry, artillery, aircraft, ships, etc.)
-- **Interactive map** — pan, zoom, click units for details
-- **Scenario log** of all AI-generated actions
+## Design Goals
+
+- **Compartmentalized code** — every concern lives in its own module
+- **Clear unit hierarchy** — BaseUnit → specialized types (Ground, Air, Naval, AirDefense, Facility…)
+- **Professional command-center UI**
+- **Prompt-driven scenario generation**
+- **Easy to extend** with new unit types or real AI backends
+
+## Project Structure
+
+```
+├── index.html
+├── css/
+│   └── styles.css              # Professional dark theme
+├── js/
+│   ├── core/
+│   │   ├── constants.js        # Shared constants & enums
+│   │   └── utils.js            # Small helpers
+│   ├── units/
+│   │   ├── BaseUnit.js         # Abstract base class
+│   │   ├── GroundUnits.js      # Tank, Infantry, Artillery, APC
+│   │   ├── AirUnits.js         # Fighter, Bomber, Helicopter, UAV
+│   │   ├── NavalUnits.js       # Destroyer, Frigate, Carrier, Submarine
+│   │   ├── AirDefense.js       # SAM, SHORAD, Radar, CIWS
+│   │   ├── Facilities.js       # Airbase, HQ, Depot, Port
+│   │   └── UnitFactory.js      # Creates the right unit from type string
+│   ├── map/
+│   │   └── MapController.js    # Leaflet + OpenStreetMap
+│   ├── ai/
+│   │   └── ScenarioGenerator.js# Prompt → structured scenario
+│   ├── ui/
+│   │   ├── Sidebar.js
+│   │   └── LogPanel.js
+│   └── app.js                  # Application entry point
+└── README.md
+```
 
 ## How to Run
 
-1. Clone the repo or open the GitHub Pages link (once enabled).
-2. Open `index.html` in a modern browser (or serve with any static server).
-3. Type a prompt and press **Generate Scenario**.
+```bash
+git clone https://github.com/randorton003-gif/military-simulator.git
+cd military-simulator
+python -m http.server 8000
+```
 
-No backend or API keys required for the demo — the AI logic is simulated client-side and can be replaced with a real LLM later.
+Open http://localhost:8000
 
-## Tech Stack
+## Unit Categories
 
-- HTML / CSS / Vanilla JS
-- [Leaflet](https://leafletjs.com/) + OpenStreetMap tiles
-- Procedural SVG icons
+| Category     | Types                                      |
+|--------------|--------------------------------------------|
+| Ground       | Tank, Infantry, Artillery, APC             |
+| Air          | Fighter, Bomber, Helicopter, UAV           |
+| Naval        | Destroyer, Frigate, Carrier, Submarine     |
+| Air Defense  | SAM, SHORAD, Radar, CIWS                   |
+| Facility     | Airbase, HQ, Depot, Port                   |
 
-## Extending with Real AI
+## Extending
 
-Replace the logic in `js/ai.js` with calls to Grok, OpenAI, or any other model. The expected output shape is documented in the file.
+1. Add a new class in the appropriate `units/*.js` file (extend `BaseUnit`)
+2. Register it in `UnitFactory.js`
+3. Add an icon mapping in `constants.js`
 
 ## License
 
