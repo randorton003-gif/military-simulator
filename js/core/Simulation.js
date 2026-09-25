@@ -1,15 +1,14 @@
 /**
- * Simulation — play / pause / speed control + unit updates.
- * Panopticon-style time control.
+ * Simulation — play/pause/speed + movement + combat resolution.
  */
 
 const Simulation = {
   running: false,
-  speed: 1,          // 1x or 2x
+  speed: 1,
   lastTs: 0,
-  units: [],         // reference to current scenario units
-  onTick: null,      // callback after each update (for UI refresh)
-
+  units: [],
+  onTick: null,
+  onCombat: null, // (event) => {}
   _rafId: null,
 
   setUnits(units) {
@@ -48,11 +47,19 @@ const Simulation = {
     if (!this.running) return;
 
     const now = performance.now();
-    const dt = ((now - this.lastTs) / 1000) * this.speed; // seconds
+    const dt = ((now - this.lastTs) / 1000) * this.speed;
     this.lastTs = now;
 
-    // Update every unit
-    this.units.forEach(u => u.update(dt));
+    const alive = this.units.filter(u => u.isAlive);
+
+    // Movement
+    alive.forEach(u => u.updateMovement(dt));
+
+    // Combat
+    alive.forEach(u => {
+      const ev = u.updateCombat(dt, this.units);
+      if (ev && typeof this.onCombat === "function") this.onCombat(ev);
+    });
 
     if (typeof this.onTick === "function") this.onTick();
 

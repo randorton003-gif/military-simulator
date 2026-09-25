@@ -6,7 +6,6 @@
   <title>Military Simulator — Command Center</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="css/styles.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
 </head>
 <body>
@@ -16,17 +15,17 @@
         <span class="brand-icon">⬡</span>
         <div>
           <h1>Military Simulator</h1>
-          <span class="brand-sub">Local AI · Panopticon-class</span>
+          <span class="brand-sub">Combat · Local AI · Drag &amp; Drop</span>
         </div>
       </div>
 
       <div class="transport">
         <button id="btnPlay" class="transport-btn" title="Play">▶</button>
         <button id="btnPause" class="transport-btn" title="Pause" disabled>⏸</button>
-        <button id="btnSpeed" class="transport-btn speed-btn" title="Toggle 1x / 2x">1×</button>
+        <button id="btnSpeed" class="transport-btn speed-btn" title="1x / 2x">1×</button>
         <span class="transport-sep"></span>
-        <button id="btnRanges" class="transport-btn toggle on" title="Toggle range rings">RADAR</button>
-        <button id="btnRoutes" class="transport-btn toggle on" title="Toggle routes">ROUTES</button>
+        <button id="btnRanges" class="transport-btn toggle on">RADAR</button>
+        <button id="btnRoutes" class="transport-btn toggle on">ROUTES</button>
       </div>
 
       <div class="status-indicators">
@@ -38,21 +37,48 @@
     </header>
 
     <div class="workspace">
-      <aside class="sidebar" id="sidebar">
+      <aside class="sidebar">
         <section class="panel">
           <h2 class="panel-title">Local AI Model</h2>
           <select id="modelSelect" class="model-select"></select>
-          <p class="hint">Requires Ollama running on localhost:11434</p>
+          <p class="hint">Ollama on localhost:11434</p>
         </section>
 
         <section class="panel">
           <h2 class="panel-title">Scenario Prompt</h2>
-          <textarea id="promptInput" rows="5"
-            placeholder="Describe the tactical situation…&#10;e.g. Blue must hold western Kyiv against red armor advancing from the east. Place SAMs for best coverage."></textarea>
+          <textarea id="promptInput" rows="4" placeholder="Tactical situation…"></textarea>
           <div class="btn-row">
             <button id="btnGenerate" class="btn primary">Generate</button>
             <button id="btnClear" class="btn ghost">Clear</button>
           </div>
+        </section>
+
+        <section class="panel">
+          <h2 class="panel-title">Map Tools</h2>
+          <label class="field-label">Mode</label>
+          <select id="modeSelect" class="model-select">
+            <option value="select">Select / Drag</option>
+            <option value="add">Add unit (click map)</option>
+            <option value="waypoint">Add waypoint (click map)</option>
+          </select>
+          <div class="tool-grid">
+            <div>
+              <label class="field-label">Type</label>
+              <select id="addTypeSelect" class="model-select"></select>
+            </div>
+            <div>
+              <label class="field-label">Side</label>
+              <select id="addSideSelect" class="model-select">
+                <option value="blue">Blue</option>
+                <option value="red">Red</option>
+              </select>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button id="btnDelete" class="btn ghost danger">Delete selected</button>
+            <button id="btnClearWp" class="btn ghost">Clear WPs</button>
+          </div>
+          <p id="selectedInfo" class="hint">None selected</p>
         </section>
 
         <section class="panel">
@@ -66,11 +92,9 @@
         </section>
       </aside>
 
-      <main class="map-area">
-        <div id="map"></div>
-      </main>
+      <main class="map-area"><div id="map"></div></main>
 
-      <aside class="log-panel" id="logPanel">
+      <aside class="log-panel">
         <h2 class="panel-title">Operations Log</h2>
         <div id="logEntries" class="log-entries"></div>
       </aside>
@@ -78,11 +102,9 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
   <script src="js/core/constants.js"></script>
   <script src="js/core/utils.js"></script>
   <script src="js/core/Simulation.js"></script>
-
   <script src="js/units/BaseUnit.js"></script>
   <script src="js/units/GroundUnits.js"></script>
   <script src="js/units/AirUnits.js"></script>
@@ -90,7 +112,6 @@
   <script src="js/units/AirDefense.js"></script>
   <script src="js/units/Facilities.js"></script>
   <script src="js/units/UnitFactory.js"></script>
-
   <script src="js/map/MapController.js"></script>
   <script src="js/ai/OllamaClient.js"></script>
   <script src="js/ai/ScenarioGenerator.js"></script>

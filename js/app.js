@@ -1,5 +1,5 @@
 /**
- * Application entry — local AI (Ollama/Qwen) + simulation + map.
+ * Application entry — combat, drag, add/delete, waypoints, local AI.
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -19,10 +19,24 @@ document.addEventListener("DOMContentLoaded", () => {
   const modelSelect = document.getElementById("modelSelect");
   const aiStatus = document.getElementById("aiStatus");
 
-  let currentScenario = null;
+  const modeSelect = document.getElementById("modeSelect");
+  const addTypeSelect = document.getElementById("addTypeSelect");
+  const addSideSelect = document.getElementById("addSideSelect");
+  const btnDelete = document.getElementById("btnDelete");
+  const btnClearWp = document.getElementById("btnClearWp");
+  const selectedInfo = document.getElementById("selectedInfo");
+
+  let currentScenario = { title: "", units: [], center: null };
   let generating = false;
 
-  // Populate model dropdown
+  // Populate add-type dropdown
+  UnitFactory.availableTypes().forEach(t => {
+    const opt = document.createElement("option");
+    opt.value = t;
+    opt.textContent = t;
+    addTypeSelect.appendChild(opt);
+  });
+
   if (modelSelect) {
     OllamaClient.availableModels.forEach(m => {
       const opt = document.createElement("option");
@@ -33,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     modelSelect.addEventListener("change", () => {
       OllamaClient.setModel(modelSelect.value);
-      LogPanel.write(`Model set to ${modelSelect.value}`, "info");
+      LogPanel.write(`Model → ${modelSelect.value}`, "info");
     });
   }
 
@@ -55,12 +69,95 @@ document.addEventListener("DOMContentLoaded", () => {
     simStatus.classList.toggle("playing", Simulation.running);
   }
 
+  function refreshUI() {
+    Sidebar.render(currentScenario);
+    Simulation.setUnits(currentScenario.units);
+  }
+
+  function selectUnit(unit) {
+    MapController.selectedId = unit?.id || null;
+    Sidebar.selectedId = unit?.id || null;
+    if (unit) {
+      selectedInfo.textContent = `${unit.name} · ${unit.type} · HP ${Math.ceil(unit.health)}/${unit.maxHealth} · targets: ${unit.canTarget.join(",")}`;
+    } else {
+      selectedInfo.textContent = "None selected";
+    }
+    Sidebar.render(currentScenario);
+  }
+
+  MapController.onSelect = selectUnit;
+  Sidebar.onSelect = selectUnit;
+
+  MapController.onMoved = (unit) => {
+    LogPanel.write(`Moved ${unit.name} → ${unit.lat.toFixed(4)}, ${unit.lng.toFixed(4)}`, "info");
+    MapController.syncUnits(currentScenario.units);
+  };
+
+  MapController.onAddAt = (lat, lng) => {
+    const type = addTypeSelect.value;
+    const side = addSideSelect.value;
+    const unit = UnitFactory.create(type, {
+      side,
+      lat,
+      lng,
+      name: `${side.toUpperCase()} ${capitalize(type)}-${currentScenario.units.length + 1}`,
+      notes: "User-placed"
+    });
+    currentScenario.units.push(unit);
+    MapController.addUnit(unit);
+    refreshUI();
+    LogPanel.write(`Added ${unit.name} at ${lat.toFixed(4)}, ${lng.toFixed(4)}`, "success");
+  };
+
+  MapController.onWaypointAt = (unitId, lat, lng) => {
+    const unit = currentScenario.units.find(u => u.id === unitId);
+    if (!unit || unit.speed <= 0) {
+      LogPanel.write("Selected unit cannot move (or none selected).", "warn");
+      return;
+    }
+    unit.addWaypoint(lat, lng);
+    MapController.syncUnits(currentScenario.units);
+    LogPanel.write(`Waypoint added for ${unit.name} (${unit.waypoints.length} total)`, "info");
+  };
+
+  modeSelect.addEventListener("change", () => {
+    MapController.setMode(modeSelect.value);
+    LogPanel.write(`Mode → ${modeSelect.value}`, "info");
+  });
+
+  btnDelete.addEventListener("click", () => {
+    const id = MapController.selectedId || Sidebar.selectedId;
+    if (!id) {
+      LogPanel.write("Select a unit first.", "warn");
+      return;
+    }
+    const idx = currentScenario.units.findIndex(u => u.id === id);
+    if (idx < 0) return;
+    const name = currentScenario.units[idx].name;
+    currentScenario.units.splice(idx, 1);
+    MapController.removeUnit(id);
+    selectUnit(null);
+    refreshUI();
+    LogPanel.write(`Deleted ${name}`, "warn");
+  });
+
+  btnClearWp.addEventListener("click", () => {
+    const id = MapController.selectedId || Sidebar.selectedId;
+    const unit = currentScenario.units.find(u => u.id === id);
+    if (!unit) {
+      LogPanel.write("Select a unit first.", "warn");
+      return;
+    }
+    unit.clearWaypoints();
+    MapController.syncUnits(currentScenario.units);
+    LogPanel.write(`Cleared waypoints for ${unit.name}`, "info");
+  });
+
   async function runScenario(prompt) {
     if (generating) return;
     generating = true;
     btnGenerate.disabled = true;
     btnGenerate.textContent = "Generating…";
-
     Simulation.pause();
 
     try {
@@ -68,19 +165,12 @@ document.addEventListener("DOMContentLoaded", () => {
         onStatus: (msg) => LogPanel.write(msg, "info")
       });
       currentScenario = scenario;
-
       MapController.applyScenario(scenario);
-      Sidebar.render(scenario);
-      Simulation.setUnits(scenario.units);
-
+      refreshUI();
       LogPanel.write(scenario.log, "info");
       LogPanel.write(`▶ ${scenario.title}`, "success");
-      if (scenario.reasoning) {
-        LogPanel.write(`Tactical reasoning: ${scenario.reasoning}`, "info");
-      }
     } catch (err) {
       LogPanel.write(`Generation failed: ${err.message}`, "warn");
-      console.error(err);
     } finally {
       generating = false;
       btnGenerate.disabled = false;
@@ -90,51 +180,56 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   Simulation.onTick = () => {
-    if (currentScenario) MapController.syncUnits(currentScenario.units);
+    if (currentScenario) {
+      MapController.syncUnits(currentScenario.units);
+      // Light UI refresh for HP numbers (throttled by rAF already)
+      Sidebar.render(currentScenario);
+    }
+  };
+
+  Simulation.onCombat = (ev) => {
+    const msg = ev.targetDestroyed
+      ? `${ev.attacker.name} destroyed ${ev.target.name}`
+      : `${ev.attacker.name} hit ${ev.target.name} for ${ev.damage.toFixed(0)} dmg`;
+    LogPanel.write(msg, ev.targetDestroyed ? "warn" : "info");
   };
 
   btnGenerate.addEventListener("click", () => runScenario(promptInput.value));
-
   btnClear.addEventListener("click", () => {
     Simulation.pause();
     MapController.clear();
+    currentScenario = { title: "", units: [], center: null };
     Sidebar.clear();
     Simulation.setUnits([]);
-    currentScenario = null;
-    LogPanel.write("Map and units cleared.", "warn");
+    selectUnit(null);
+    LogPanel.write("Map cleared.", "warn");
     updateTransportUI();
   });
 
   btnPlay.addEventListener("click", () => {
     Simulation.play();
-    LogPanel.write("Simulation playing", "success");
+    LogPanel.write("Simulation playing — movement + combat active", "success");
     updateTransportUI();
   });
-
   btnPause.addEventListener("click", () => {
     Simulation.pause();
-    LogPanel.write("Simulation paused", "warn");
+    LogPanel.write("Paused", "warn");
     updateTransportUI();
   });
-
   btnSpeed.addEventListener("click", () => {
     Simulation.toggleSpeed();
-    LogPanel.write(`Speed set to ${Simulation.speed}×`, "info");
+    LogPanel.write(`Speed ${Simulation.speed}×`, "info");
     updateTransportUI();
   });
-
   btnRanges.addEventListener("click", () => {
     MapController.toggleRanges();
     btnRanges.classList.toggle("on", MapController.showRanges);
-    if (currentScenario) MapController.syncUnits(currentScenario.units);
-    LogPanel.write(`Range rings ${MapController.showRanges ? "ON" : "OFF"}`, "info");
+    MapController.syncUnits(currentScenario.units);
   });
-
   btnRoutes.addEventListener("click", () => {
     MapController.toggleRoutes();
     btnRoutes.classList.toggle("on", MapController.showRoutes);
-    if (currentScenario) MapController.syncUnits(currentScenario.units);
-    LogPanel.write(`Routes ${MapController.showRoutes ? "ON" : "OFF"}`, "info");
+    MapController.syncUnits(currentScenario.units);
   });
 
   promptInput.addEventListener("keydown", (e) => {
@@ -144,9 +239,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Seed with a rich adversarial prompt
+  // Keyboard delete
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Delete" || e.key === "Backspace") {
+      if (document.activeElement?.tagName === "TEXTAREA" || document.activeElement?.tagName === "INPUT") return;
+      btnDelete.click();
+    }
+  });
+
   promptInput.value =
-    "Blue force must defend the western approaches to Kyiv. Red armor and air are advancing from the east. Place SAMs and radars for best coverage, tanks in blocking positions, and keep HQ protected.";
+    "Blue force defends western Kyiv against red armor and air from the east. Place SAMs to cover approaches; tanks in blocking positions.";
   runScenario(promptInput.value);
   updateTransportUI();
 });

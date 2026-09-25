@@ -1,6 +1,7 @@
 /**
- * Air Defense — SAM, SHORAD, Radar, CIWS.
- * Each carries realistic default range values for range-ring display.
+ * Air Defense — domain GROUND (fixed/semi-fixed systems).
+ * SHORAD / SAM / CIWS primarily engage AIR.
+ * Radar detects but does not damage.
  */
 
 class SAM extends BaseUnit {
@@ -9,8 +10,13 @@ class SAM extends BaseUnit {
       ...opts,
       type: "sam",
       category: UNIT_CATEGORY.AIR_DEFENSE,
+      domain: DOMAIN.GROUND,
+      maxHealth: opts.maxHealth ?? 70,
+      damage: opts.damage ?? 30,
+      canTarget: opts.canTarget ?? [DOMAIN.AIR],
       detectionRangeKm: opts.detectionRangeKm ?? 60,
-      engagementRangeKm: opts.engagementRangeKm ?? 40
+      engagementRangeKm: opts.engagementRangeKm ?? 40,
+      fireCooldownSec: opts.fireCooldownSec ?? 3
     });
   }
 }
@@ -21,8 +27,14 @@ class SHORAD extends BaseUnit {
       ...opts,
       type: "shorad",
       category: UNIT_CATEGORY.AIR_DEFENSE,
+      domain: DOMAIN.GROUND,
+      maxHealth: opts.maxHealth ?? 50,
+      damage: opts.damage ?? 16,
+      // Short-range air defense — flying units only
+      canTarget: opts.canTarget ?? [DOMAIN.AIR],
       detectionRangeKm: opts.detectionRangeKm ?? 15,
-      engagementRangeKm: opts.engagementRangeKm ?? 8
+      engagementRangeKm: opts.engagementRangeKm ?? 8,
+      fireCooldownSec: opts.fireCooldownSec ?? 1.5
     });
   }
 }
@@ -33,8 +45,13 @@ class Radar extends BaseUnit {
       ...opts,
       type: "radar",
       category: UNIT_CATEGORY.AIR_DEFENSE,
+      domain: DOMAIN.GROUND,
+      maxHealth: opts.maxHealth ?? 40,
+      damage: opts.damage ?? 0,
+      canTarget: opts.canTarget ?? [],
       detectionRangeKm: opts.detectionRangeKm ?? 120,
-      engagementRangeKm: 0
+      engagementRangeKm: 0,
+      fireCooldownSec: 999
     });
   }
 }
@@ -45,8 +62,13 @@ class CIWS extends BaseUnit {
       ...opts,
       type: "ciws",
       category: UNIT_CATEGORY.AIR_DEFENSE,
+      domain: DOMAIN.GROUND,
+      maxHealth: opts.maxHealth ?? 45,
+      damage: opts.damage ?? 12,
+      canTarget: opts.canTarget ?? [DOMAIN.AIR],
       detectionRangeKm: opts.detectionRangeKm ?? 5,
-      engagementRangeKm: opts.engagementRangeKm ?? 3
+      engagementRangeKm: opts.engagementRangeKm ?? 3,
+      fireCooldownSec: opts.fireCooldownSec ?? 0.8
     });
   }
 }
