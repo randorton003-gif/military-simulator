@@ -1,5 +1,5 @@
 /**
- * Application entry — wires UI, simulation, map, and scenario generation.
+ * Application entry — local AI (Ollama/Qwen) + simulation + map.
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -16,8 +16,36 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnRanges = document.getElementById("btnRanges");
   const btnRoutes = document.getElementById("btnRoutes");
   const simStatus = document.getElementById("simStatus");
+  const modelSelect = document.getElementById("modelSelect");
+  const aiStatus = document.getElementById("aiStatus");
 
   let currentScenario = null;
+  let generating = false;
+
+  // Populate model dropdown
+  if (modelSelect) {
+    OllamaClient.availableModels.forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m.id;
+      opt.textContent = m.label;
+      if (m.id === OllamaClient.model) opt.selected = true;
+      modelSelect.appendChild(opt);
+    });
+    modelSelect.addEventListener("change", () => {
+      OllamaClient.setModel(modelSelect.value);
+      LogPanel.write(`Model set to ${modelSelect.value}`, "info");
+    });
+  }
+
+  async function refreshAiStatus() {
+    if (!aiStatus) return;
+    const ok = await OllamaClient.isAvailable();
+    aiStatus.textContent = ok ? "AI ONLINE" : "AI OFFLINE";
+    aiStatus.classList.toggle("online", ok);
+    aiStatus.classList.toggle("muted", !ok);
+  }
+  refreshAiStatus();
+  setInterval(refreshAiStatus, 15000);
 
   function updateTransportUI() {
     btnPlay.disabled = Simulation.running;
@@ -27,25 +55,42 @@ document.addEventListener("DOMContentLoaded", () => {
     simStatus.classList.toggle("playing", Simulation.running);
   }
 
-  function runScenario(prompt) {
+  async function runScenario(prompt) {
+    if (generating) return;
+    generating = true;
+    btnGenerate.disabled = true;
+    btnGenerate.textContent = "Generating…";
+
     Simulation.pause();
-    const scenario = ScenarioGenerator.generate(prompt);
-    currentScenario = scenario;
 
-    MapController.applyScenario(scenario);
-    Sidebar.render(scenario);
-    Simulation.setUnits(scenario.units);
+    try {
+      const scenario = await ScenarioGenerator.generate(prompt, {
+        onStatus: (msg) => LogPanel.write(msg, "info")
+      });
+      currentScenario = scenario;
 
-    LogPanel.write(scenario.log, "info");
-    LogPanel.write(`▶ ${scenario.title}`, "success");
-    updateTransportUI();
+      MapController.applyScenario(scenario);
+      Sidebar.render(scenario);
+      Simulation.setUnits(scenario.units);
+
+      LogPanel.write(scenario.log, "info");
+      LogPanel.write(`▶ ${scenario.title}`, "success");
+      if (scenario.reasoning) {
+        LogPanel.write(`Tactical reasoning: ${scenario.reasoning}`, "info");
+      }
+    } catch (err) {
+      LogPanel.write(`Generation failed: ${err.message}`, "warn");
+      console.error(err);
+    } finally {
+      generating = false;
+      btnGenerate.disabled = false;
+      btnGenerate.textContent = "Generate";
+      updateTransportUI();
+    }
   }
 
-  // Simulation tick → refresh markers
   Simulation.onTick = () => {
-    if (currentScenario) {
-      MapController.syncUnits(currentScenario.units);
-    }
+    if (currentScenario) MapController.syncUnits(currentScenario.units);
   };
 
   btnGenerate.addEventListener("click", () => runScenario(promptInput.value));
@@ -99,10 +144,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Seed
+  // Seed with a rich adversarial prompt
   promptInput.value =
-    "Blue force defense west of Kyiv with tanks, infantry, artillery and SAM coverage against red air threat";
+    "Blue force must defend the western approaches to Kyiv. Red armor and air are advancing from the east. Place SAMs and radars for best coverage, tanks in blocking positions, and keep HQ protected.";
   runScenario(promptInput.value);
-  LogPanel.write("System online. Press ▶ to run dictated movements.", "success");
   updateTransportUI();
 });

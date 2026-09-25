@@ -16,11 +16,10 @@
         <span class="brand-icon">⬡</span>
         <div>
           <h1>Military Simulator</h1>
-          <span class="brand-sub">Panopticon-class Command Interface</span>
+          <span class="brand-sub">Local AI · Panopticon-class</span>
         </div>
       </div>
 
-      <!-- Simulation Transport Controls -->
       <div class="transport">
         <button id="btnPlay" class="transport-btn" title="Play">▶</button>
         <button id="btnPause" class="transport-btn" title="Pause" disabled>⏸</button>
@@ -31,6 +30,7 @@
       </div>
 
       <div class="status-indicators">
+        <span id="aiStatus" class="status-pill muted">AI …</span>
         <span id="simStatus" class="status-pill">PAUSED</span>
         <span id="unitCount" class="status-pill">0 UNITS</span>
         <span id="scenarioTitle" class="status-pill muted">NO SCENARIO</span>
@@ -40,9 +40,15 @@
     <div class="workspace">
       <aside class="sidebar" id="sidebar">
         <section class="panel">
+          <h2 class="panel-title">Local AI Model</h2>
+          <select id="modelSelect" class="model-select"></select>
+          <p class="hint">Requires Ollama running on localhost:11434</p>
+        </section>
+
+        <section class="panel">
           <h2 class="panel-title">Scenario Prompt</h2>
-          <textarea id="promptInput" rows="4"
-            placeholder="Describe a scenario…&#10;e.g. Blue defense west of Kyiv with tanks, infantry and SAM coverage against red air threat"></textarea>
+          <textarea id="promptInput" rows="5"
+            placeholder="Describe the tactical situation…&#10;e.g. Blue must hold western Kyiv against red armor advancing from the east. Place SAMs for best coverage."></textarea>
           <div class="btn-row">
             <button id="btnGenerate" class="btn primary">Generate</button>
             <button id="btnClear" class="btn ghost">Clear</button>
@@ -86,6 +92,7 @@
   <script src="js/units/UnitFactory.js"></script>
 
   <script src="js/map/MapController.js"></script>
+  <script src="js/ai/OllamaClient.js"></script>
   <script src="js/ai/ScenarioGenerator.js"></script>
   <script src="js/ui/Sidebar.js"></script>
   <script src="js/ui/LogPanel.js"></script>
