@@ -50,16 +50,135 @@ const SCENARIO_SCHEMA = {
   required: ["title", "summary", "center", "units"]
 };
 
-/** Types that are fixed by default unless prompt relocates them */
 const DEFAULT_STATIONED_TYPES = new Set([
   "sam", "shorad", "radar", "ciws", "airbase", "hq", "depot", "port"
 ]);
 
+/** Canonical type list sorted longest-first so "shorad" wins over partial matches */
+const TYPE_ALIASES = [
+  ["shorad", "shorad"],
+  ["helicopter", "helicopter"],
+  ["artillery", "artillery"],
+  ["infantry", "infantry"],
+  ["submarine", "submarine"],
+  ["destroyer", "destroyer"],
+  ["frigate", "frigate"],
+  ["carrier", "carrier"],
+  ["fighter", "fighter"],
+  ["bomber", "bomber"],
+  ["airbase", "airbase"],
+  ["depot", "depot"],
+  ["radar", "radar"],
+  ["ciws", "ciws"],
+  ["port", "port"],
+  ["tank", "tank"],
+  ["tanks", "tank"],
+  ["apc", "apc"],
+  ["uav", "uav"],
+  ["sam", "sam"],
+  ["hq", "hq"]
+];
+
+/**
+ * Parse prompt into discrete unit groups: { type, side, count, stationed, clause }.
+ * Handles phrases like "2 blue tanks stationed…" and "2 red tanks advance…".
+ */
+function parseUnitMentions(text) {
+  const lower = text.toLowerCase();
+  // Split on semicolons or periods that separate clauses
+  const clauses = lower
+    .split(/[;.]/)
+    .map(c => c.trim())
+    .filter(Boolean);
+
+  // Also run whole prompt as one clause so single-sentence prompts still work
+  if (clauses.length === 0) clauses.push(lower);
+
+  const groups = [];
+
+  const extractFromClause = (clause) => {
+    // Find all type hits in this clause
+    for (const [token, type] of TYPE_ALIASES) {
+      // number? + optional side words + type (with optional trailing s already in token)
+      // Allow words between number and type: "2 blue tanks", "1 blue SAM"
+      const re = new RegExp(
+        `(\\d+)\\s+(?:(?:blue|red|friendly|enemy|hostile|defender|attacker)\\s+)*${token}\\b`,
+        "gi"
+      );
+      let m;
+      let found = false;
+      while ((m = re.exec(clause)) !== null) {
+        found = true;
+        const count = clamp(parseInt(m[1], 10), 1, 12);
+        const slice = clause.slice(Math.max(0, m.index - 20), m.index + m[0].length + 40);
+        const side = /\b(red|enemy|hostile|attacker)\b/.test(slice)
+          ? SIDES.RED
+          : /\b(blue|friendly|defender|allied)\b/.test(slice)
+            ? SIDES.BLUE
+            : SIDES.BLUE;
+        const stationed =
+          DEFAULT_STATIONED_TYPES.has(type) ||
+          /\b(stationed|hold|holding|defend|defending|garrison|emplaced|fixed|static|covering)\b/.test(clause);
+        const moving =
+          /\b(advance|attack|transit|move|patrol|cap|route|toward|towards|from the)\b/.test(clause);
+        groups.push({
+          type,
+          side,
+          count,
+          stationed: stationed && !moving ? true : moving ? false : DEFAULT_STATIONED_TYPES.has(type),
+          clause
+        });
+      }
+      // Type without leading number → count 1
+      if (!found) {
+        const re2 = new RegExp(`\\b${token}\\b`, "i");
+        if (re2.test(clause)) {
+          // Skip if this token is only the plural already captured via another alias in same clause
+          // (e.g. tanks matched; skip bare tank if we already added tank from tanks)
+          const already = groups.some(g => g.type === type && g.clause === clause);
+          if (already) continue;
+
+          // Require the type to appear near a side word or as a clear unit mention
+          const side =
+            /\b(red|enemy|hostile|attacker)\b/.test(clause)
+              ? SIDES.RED
+              : /\b(blue|friendly|defender|allied)\b/.test(clause)
+                ? SIDES.BLUE
+                : SIDES.BLUE;
+          // Avoid double-counting when number form already matched in another pass
+          const numForm = new RegExp(`\\d+\\s+(?:\\w+\\s+)*${token}\\b`, "i");
+          if (numForm.test(clause)) continue;
+
+          const stationed =
+            DEFAULT_STATIONED_TYPES.has(type) ||
+            /\b(stationed|hold|holding|defend|defending|garrison|emplaced|fixed|static|covering)\b/.test(clause);
+          const moving =
+            /\b(advance|attack|transit|move|patrol|cap|route|toward|towards|from the)\b/.test(clause);
+          groups.push({
+            type,
+            side,
+            count: 1,
+            stationed: moving ? false : stationed || DEFAULT_STATIONED_TYPES.has(type),
+            clause
+          });
+        }
+      }
+    }
+  };
+
+  clauses.forEach(extractFromClause);
+
+  // Dedupe identical groups (same type+side+clause)
+  const seen = new Set();
+  return groups.filter(g => {
+    const key = `${g.type}|${g.side}|${g.clause}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 const ScenarioGenerator = {
-  /**
-   * @param {string} prompt
-   * @param {{ onStatus?: (msg: string) => void }} [opts]
-   */
   async generate(prompt, opts = {}) {
     const status = opts.onStatus || (() => {});
     const text = (prompt || "").trim();
@@ -79,20 +198,33 @@ const ScenarioGenerator = {
           `- Only units named in the prompt.\n` +
           `- Each unit needs start lat/lng.\n` +
           `- stationed:true + empty waypoints if holding/static; else waypoints for movement.\n` +
+          `- Example: "2 blue tanks …; 1 blue SAM …; 2 red tanks …" → 2 blue tank + 1 blue sam + 2 red tank.\n` +
           `Return JSON only.`;
 
         const raw = await OllamaClient.chatJSON(system, user, SCENARIO_SCHEMA);
         status("AI response received. Building units…");
-        return this._fromAI(raw, text);
+        const result = this._fromAI(raw, text);
+
+        // If model under-delivered vs deterministic parse, prefer merge/repair
+        const expected = parseUnitMentions(text);
+        const expectedCount = expected.reduce((s, g) => s + g.count, 0);
+        if (expectedCount > 0 && result.units.length < expectedCount) {
+          status(`AI returned ${result.units.length} units but prompt implies ${expectedCount} — using strict parser.`);
+          return this._fallback(text, [
+            `AI under-deployed (${result.units.length} < ${expectedCount}).`,
+            "Repaired with strict phrase parser."
+          ]);
+        }
+        return result;
       } catch (err) {
         console.warn("[ScenarioGenerator] Ollama failed:", err);
         status(`AI error: ${err.message}. Using strict fallback…`);
-        return this._fallback(text, [`Ollama error: ${err.message}`, "Strict keyword fallback."]);
+        return this._fallback(text, [`Ollama error: ${err.message}`, "Strict phrase parser fallback."]);
       }
     }
 
-    status("Ollama offline — strict keyword fallback.");
-    return this._fallback(text, ["Ollama offline. Strict keyword fallback."]);
+    status("Ollama offline — strict phrase parser.");
+    return this._fallback(text, ["Ollama offline. Strict phrase parser."]);
   },
 
   _fromAI(raw, originalPrompt) {
@@ -140,10 +272,9 @@ const ScenarioGenerator = {
 
       if (!stationed && Array.isArray(u.waypoints) && u.waypoints.length && unit.speed > 0) {
         unit.setWaypoints(
-          u.waypoints.map(w => ({
-            lat: Number(w.lat),
-            lng: Number(w.lng)
-          })).filter(w => Number.isFinite(w.lat) && Number.isFinite(w.lng))
+          u.waypoints
+            .map(w => ({ lat: Number(w.lat), lng: Number(w.lng) }))
+            .filter(w => Number.isFinite(w.lat) && Number.isFinite(w.lng))
         );
         log.push(`${unit.name}: moving (${unit.waypoints.length} waypoints)`);
       } else {
@@ -155,7 +286,6 @@ const ScenarioGenerator = {
       units.push(unit);
     });
 
-    // No auto-HQ or filler units
     log.push(`Deployed ${units.length} units (prompt-only)`);
     if (raw.reasoning) log.push(`Reasoning: ${String(raw.reasoning).slice(0, 200)}`);
 
@@ -170,16 +300,16 @@ const ScenarioGenerator = {
   },
 
   /**
-   * Strict fallback: only types whose names appear in the prompt.
-   * No default combined-arms package. No auto HQ.
+   * Strict phrase parser fallback.
+   * Parses "2 blue tanks…; 1 blue SAM…; 2 red tanks…" into separate groups.
    */
   _fallback(text, extraLog = []) {
     const lower = text.toLowerCase();
     const log = [...extraLog];
-    log.push(`Prompt: "${text.slice(0, 100)}${text.length > 100 ? "…" : ""}"`);
-    log.push("Skill: strict prompt fidelity (fallback)");
+    log.push(`Prompt: "${text.slice(0, 120)}${text.length > 120 ? "…" : ""}"`);
+    log.push("Skill: strict phrase parser");
 
-    let center = { lat: 50.45, lng: 30.52, zoom: 10, name: "Operational Area" };
+    let center = { lat: 50.4501, lng: 30.5234, zoom: 11, name: "Kyiv" };
     for (const [key, loc] of Object.entries(LOCATIONS)) {
       if (lower.includes(key)) {
         center = { ...loc };
@@ -188,27 +318,9 @@ const ScenarioGenerator = {
     }
     log.push(`Location → ${center.name}`);
 
-    // Parse sides only if mentioned
-    const hasBlue = /\b(blue|friendly|defender|allied)\b/.test(lower);
-    const hasRed = /\b(red|enemy|hostile|attacker)\b/.test(lower);
-
-    // Only types literally present in the prompt
-    const allTypes = UnitFactory.availableTypes();
-    const requested = allTypes.filter(t => {
-      const re = new RegExp(`\\b${t}s?\\b`, "i");
-      return re.test(lower);
-    });
-
-    // Light aliases that still require an explicit phrase
-    if (/\bair\s*defense\b|\bsam\s*coverage\b/.test(lower)) {
-      ["sam", "shorad"].forEach(t => {
-        if (!requested.includes(t) && lower.includes(t)) requested.push(t);
-      });
-      if (/\bsam\b/.test(lower) && !requested.includes("sam")) requested.push("sam");
-    }
-
-    if (requested.length === 0) {
-      log.push("No unit types found in prompt — deploying nothing.");
+    const groups = parseUnitMentions(text);
+    if (groups.length === 0) {
+      log.push("No unit phrases found — deploying nothing.");
       return {
         title: `Operation — ${center.name}`,
         summary: "No units (none named in prompt)",
@@ -218,64 +330,45 @@ const ScenarioGenerator = {
       };
     }
 
-    log.push(`Types from prompt → ${requested.join(", ")}`);
-
-    const wantsMove = /\b(advance|attack|transit|move|patrol|cap|route|waypoint|towards?|toward)\b/.test(lower);
-    const wantsStationed = /\b(stationed|hold|holding|defend|defending|garrison|emplaced|fixed|static)\b/.test(lower);
-
-    // Counts: "3 tanks" etc.
-    const countFor = (type) => {
-      const m = lower.match(new RegExp(`(\\d+)\\s*${type}s?\\b`));
-      if (m) return clamp(parseInt(m[1], 10), 1, 12);
-      return 1;
-    };
+    log.push(
+      "Parsed groups → " +
+        groups.map(g => `${g.count}× ${g.side} ${g.type} (${g.stationed ? "stationed" : "moving"})`).join("; ")
+    );
 
     const units = [];
     let seq = 1;
 
-    const placeSide = (side, type, index, total) => {
-      const spread = 0.02 * index;
-      const sideOff = side === SIDES.RED ? 0.04 : -0.03;
-      const lat = center.lat + randomOffset(0.02) + spread * 0.3;
-      const lng = center.lng + randomOffset(0.03) + sideOff;
+    groups.forEach(g => {
+      for (let i = 0; i < g.count; i++) {
+        // Blue west / red east of center for Kyiv-style prompts
+        const sideOffLng = g.side === SIDES.RED ? 0.08 + i * 0.012 : -0.08 - i * 0.012;
+        const sideOffLat = (i - (g.count - 1) / 2) * 0.015;
+        const lat = center.lat + sideOffLat + randomOffset(0.008);
+        const lng = center.lng + sideOffLng + randomOffset(0.008);
 
-      const u = UnitFactory.create(type, {
-        side,
-        lat,
-        lng,
-        name: `${side.toUpperCase()} ${capitalize(type)}-${seq++}`,
-        notes: "From prompt (fallback)"
-      });
-      u.setStartPosition(lat, lng);
+        const u = UnitFactory.create(g.type, {
+          side: g.side,
+          lat,
+          lng,
+          name: `${g.side.toUpperCase()} ${capitalize(g.type)}-${seq++}`,
+          notes: "From prompt"
+        });
+        u.setStartPosition(lat, lng);
 
-      const fixed = DEFAULT_STATIONED_TYPES.has(type);
-      const stationed = fixed || (wantsStationed && !wantsMove) || (!wantsMove && !wantsStationed && fixed);
-
-      if (!stationed && u.speed > 0 && wantsMove) {
-        const dir = side === SIDES.RED ? -1 : 1;
-        u.setWaypoints([
-          { lat: lat + dir * 0.03, lng: lng + dir * 0.04 },
-          { lat: lat + dir * 0.06, lng: lng + dir * 0.07 }
-        ]);
-        log.push(`${u.name}: moving`);
-      } else {
-        u.clearWaypoints();
-        log.push(`${u.name}: stationed`);
-      }
-      units.push(u);
-    };
-
-    requested.forEach(type => {
-      const n = countFor(type);
-      if (hasBlue && hasRed) {
-        // Split named types across both sides when both mentioned
-        for (let i = 0; i < n; i++) {
-          placeSide(i % 2 === 0 ? SIDES.BLUE : SIDES.RED, type, i, n);
+        if (!g.stationed && u.speed > 0) {
+          // Advance toward map center
+          const midLat = (lat + center.lat) / 2;
+          const midLng = (lng + center.lng) / 2;
+          u.setWaypoints([
+            { lat: midLat, lng: midLng },
+            { lat: center.lat + randomOffset(0.01), lng: center.lng + randomOffset(0.01) }
+          ]);
+          log.push(`${u.name}: moving toward ${center.name}`);
+        } else {
+          u.clearWaypoints();
+          log.push(`${u.name}: stationed`);
         }
-      } else if (hasRed && !hasBlue) {
-        for (let i = 0; i < n; i++) placeSide(SIDES.RED, type, i, n);
-      } else {
-        for (let i = 0; i < n; i++) placeSide(SIDES.BLUE, type, i, n);
+        units.push(u);
       }
     });
 
@@ -283,7 +376,7 @@ const ScenarioGenerator = {
 
     return {
       title: `Operation — ${center.name}`,
-      summary: `${units.length} units · ${requested.join(", ")}`,
+      summary: `${units.length} units · ${groups.map(g => `${g.count} ${g.side} ${g.type}`).join(", ")}`,
       center,
       units,
       log
@@ -302,3 +395,4 @@ const ScenarioGenerator = {
 };
 
 window.ScenarioGenerator = ScenarioGenerator;
+window.parseUnitMentions = parseUnitMentions;
