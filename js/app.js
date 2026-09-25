@@ -1,5 +1,5 @@
 /**
- * Application entry — combat, drag, add/delete, waypoints, local AI.
+ * Application entry — strict skill, combat, drag, add/delete, waypoints.
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -29,7 +29,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentScenario = { title: "", units: [], center: null };
   let generating = false;
 
-  // Populate add-type dropdown
   UnitFactory.availableTypes().forEach(t => {
     const opt = document.createElement("option");
     opt.value = t;
@@ -78,7 +77,11 @@ document.addEventListener("DOMContentLoaded", () => {
     MapController.selectedId = unit?.id || null;
     Sidebar.selectedId = unit?.id || null;
     if (unit) {
-      selectedInfo.textContent = `${unit.name} · ${unit.type} · HP ${Math.ceil(unit.health)}/${unit.maxHealth} · targets: ${unit.canTarget.join(",")}`;
+      const wp = unit.waypoints?.length || 0;
+      selectedInfo.textContent =
+        `${unit.name} · ${unit.type} · HP ${Math.ceil(unit.health)}/${unit.maxHealth}` +
+        ` · ${wp ? wp + " waypoints" : "stationed"}` +
+        ` · targets: ${unit.canTarget.join(",")}`;
     } else {
       selectedInfo.textContent = "None selected";
     }
@@ -89,7 +92,8 @@ document.addEventListener("DOMContentLoaded", () => {
   Sidebar.onSelect = selectUnit;
 
   MapController.onMoved = (unit) => {
-    LogPanel.write(`Moved ${unit.name} → ${unit.lat.toFixed(4)}, ${unit.lng.toFixed(4)}`, "info");
+    unit.setStartPosition(unit.lat, unit.lng);
+    LogPanel.write(`Start moved: ${unit.name} → ${unit.lat.toFixed(4)}, ${unit.lng.toFixed(4)}`, "info");
     MapController.syncUnits(currentScenario.units);
   };
 
@@ -103,6 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
       name: `${side.toUpperCase()} ${capitalize(type)}-${currentScenario.units.length + 1}`,
       notes: "User-placed"
     });
+    unit.setStartPosition(lat, lng);
     currentScenario.units.push(unit);
     MapController.addUnit(unit);
     refreshUI();
@@ -112,12 +117,13 @@ document.addEventListener("DOMContentLoaded", () => {
   MapController.onWaypointAt = (unitId, lat, lng) => {
     const unit = currentScenario.units.find(u => u.id === unitId);
     if (!unit || unit.speed <= 0) {
-      LogPanel.write("Selected unit cannot move (or none selected).", "warn");
+      LogPanel.write("Select a mobile unit first.", "warn");
       return;
     }
     unit.addWaypoint(lat, lng);
     MapController.syncUnits(currentScenario.units);
-    LogPanel.write(`Waypoint added for ${unit.name} (${unit.waypoints.length} total)`, "info");
+    LogPanel.write(`Waypoint for ${unit.name} (${unit.waypoints.length} total)`, "info");
+    selectUnit(unit);
   };
 
   modeSelect.addEventListener("change", () => {
@@ -151,6 +157,7 @@ document.addEventListener("DOMContentLoaded", () => {
     unit.clearWaypoints();
     MapController.syncUnits(currentScenario.units);
     LogPanel.write(`Cleared waypoints for ${unit.name}`, "info");
+    selectUnit(unit);
   });
 
   async function runScenario(prompt) {
@@ -182,7 +189,6 @@ document.addEventListener("DOMContentLoaded", () => {
   Simulation.onTick = () => {
     if (currentScenario) {
       MapController.syncUnits(currentScenario.units);
-      // Light UI refresh for HP numbers (throttled by rAF already)
       Sidebar.render(currentScenario);
     }
   };
@@ -208,7 +214,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   btnPlay.addEventListener("click", () => {
     Simulation.play();
-    LogPanel.write("Simulation playing — movement + combat active", "success");
+    LogPanel.write("Playing — movement + combat", "success");
     updateTransportUI();
   });
   btnPause.addEventListener("click", () => {
@@ -239,7 +245,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Keyboard delete
   document.addEventListener("keydown", (e) => {
     if (e.key === "Delete" || e.key === "Backspace") {
       if (document.activeElement?.tagName === "TEXTAREA" || document.activeElement?.tagName === "INPUT") return;
@@ -247,8 +252,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Example that names units, starts, and motion explicitly
   promptInput.value =
-    "Blue force defends western Kyiv against red armor and air from the east. Place SAMs to cover approaches; tanks in blocking positions.";
+    "2 blue tanks stationed west of Kyiv; 1 blue SAM stationed covering the western approach; 2 red tanks advance from the east toward the city";
   runScenario(promptInput.value);
   updateTransportUI();
 });

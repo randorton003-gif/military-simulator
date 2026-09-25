@@ -15,7 +15,7 @@
         <span class="brand-icon">⬡</span>
         <div>
           <h1>Military Simulator</h1>
-          <span class="brand-sub">Combat · Local AI · Drag &amp; Drop</span>
+          <span class="brand-sub">Strict prompt skill · Combat · Drag &amp; Drop</span>
         </div>
       </div>
 
@@ -41,12 +41,13 @@
         <section class="panel">
           <h2 class="panel-title">Local AI Model</h2>
           <select id="modelSelect" class="model-select"></select>
-          <p class="hint">Ollama on localhost:11434</p>
+          <p class="hint">Skill: js/ai/skills.md — only units named in the prompt</p>
         </section>
 
         <section class="panel">
           <h2 class="panel-title">Scenario Prompt</h2>
-          <textarea id="promptInput" rows="4" placeholder="Tactical situation…"></textarea>
+          <textarea id="promptInput" rows="5"
+            placeholder="Name each unit, start location, and stationed or waypoints…&#10;e.g. 2 blue tanks stationed west of Kyiv; 1 red fighter transits from the east toward the city"></textarea>
           <div class="btn-row">
             <button id="btnGenerate" class="btn primary">Generate</button>
             <button id="btnClear" class="btn ghost">Clear</button>
@@ -114,6 +115,7 @@
   <script src="js/units/UnitFactory.js"></script>
   <script src="js/map/MapController.js"></script>
   <script src="js/ai/OllamaClient.js"></script>
+  <script src="js/ai/ScenarioSkill.js"></script>
   <script src="js/ai/ScenarioGenerator.js"></script>
   <script src="js/ui/Sidebar.js"></script>
   <script src="js/ui/LogPanel.js"></script>
