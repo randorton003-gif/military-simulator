@@ -1,0 +1,182 @@
+@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap");
+@import "leaflet/dist/leaflet.css";
+
+@theme {
+  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --color-background: #0a0c10;
+  --color-foreground: #e6e4dc;
+  --color-card: #12151b;
+  --color-card-foreground: #e6e4dc;
+  --color-popover: #161a21;
+  --color-popover-foreground: #e6e4dc;
+  --color-primary: #c8ccd4;
+  --color-primary-foreground: #0a0c10;
+  --color-secondary: #1c2129;
+  --color-secondary-foreground: #e6e4dc;
+  --color-muted: #1a1e26;
+  --color-muted-foreground: #9aa0aa;
+  --color-accent: #1c2129;
+  --color-accent-foreground: #e6e4dc;
+  --color-destructive: #c45c5c;
+  --color-border: color-mix(in oklab, #e6e4dc 12%, transparent);
+  --color-input: color-mix(in oklab, #e6e4dc 16%, transparent);
+  --color-ring: #8aa0b8;
+  --color-info: #6d93b8;
+  --color-danger: #c45c5c;
+  --color-success: #6f9e7a;
+  --color-warning: #c4a46a;
+
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius: 0.75rem;
+
+  --text-micro: 0.6875rem;
+  --text-2xs: 0.625rem;
+
+  --z-hud: 1100;
+  --z-modal: 2000;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-quick: 150ms;
+  --motion-fast: 250ms;
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100dvh;
+    background: var(--color-background);
+    color: var(--color-foreground);
+  }
+
+  body {
+    font-family: var(--font-sans);
+    letter-spacing: -0.01em;
+  }
+
+  * {
+    border-color: var(--color-border);
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Leaflet chrome */
+.leaflet-container {
+  background: var(--color-background);
+  font-family: var(--font-sans);
+  color: var(--color-foreground);
+}
+
+.leaflet-control-zoom a {
+  background: var(--color-card) !important;
+  color: var(--color-foreground) !important;
+  border-color: var(--color-border) !important;
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  line-height: 2.25rem !important;
+}
+
+.leaflet-bar {
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-sm) !important;
+  overflow: hidden;
+}
+
+.leaflet-control-attribution {
+  background: color-mix(in oklab, var(--color-card) 88%, transparent) !important;
+  color: var(--color-muted-foreground) !important;
+  font-size: 0.625rem;
+}
+
+.mil-marker {
+  background: none !important;
+  border: none !important;
+}
+
+.mil {
+  display: flex;
+  width: 2.5rem;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: auto;
+}
+
+.mil-bg {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 2px solid;
+  border-radius: 0.25rem;
+  background: #ece8dc;
+  box-shadow: 0 1px 4px color-mix(in oklab, #0a0c10 55%, transparent);
+}
+
+.mil-bg svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.mil.sel .mil-bg {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 1px;
+}
+
+.mil.dead {
+  opacity: 0.4;
+}
+
+.hp {
+  width: 2rem;
+  height: 3px;
+  margin-top: 2px;
+  background: #2a2c31;
+}
+
+.hp i {
+  display: block;
+  height: 100%;
+  background: var(--color-success);
+}
+
+.mil-n {
+  max-width: 4.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  color: var(--color-foreground);
+  text-shadow: 0 1px 2px #0a0c10;
+}

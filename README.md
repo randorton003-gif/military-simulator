@@ -1,52 +1,56 @@
-# Military Simulator — Strict Prompt Skill
+# Aegis Command
 
-Local AI (Ollama / Qwen) deploys **only what you name** in the prompt.
+Parser-first military simulator on OpenStreetMap. Units exist only if you name them in the prompt.
 
-## Skill file
+The previous static / Ollama build is on the `legacy-static` branch.
 
-See **[js/ai/skills.md](js/ai/skills.md)** — formal rules for the local model.
+## Run on Windows (PowerShell)
 
-Embedded at runtime via `js/ai/ScenarioSkill.js` into the system prompt.
+You need [Git](https://git-scm.com/download/win) and [Node.js LTS](https://nodejs.org/) (includes `npm`).
 
-### Rules summary
+```powershell
+cd $HOME
 
-1. **Only units in the prompt** — no auto HQ, radar, or filler forces  
-2. **Start location** — every unit gets `lat`/`lng` from the prompt (or theater)  
-3. **Stationed vs waypoints** — static hold vs multi-point routes as written  
-4. **Sides** — blue/red only when the prompt assigns them  
+# Optional: remove an old copy first
+if (Test-Path .\military-simulator) {
+  Remove-Item -Recurse -Force .\military-simulator
+}
 
-### Good prompts
+git clone https://github.com/randorton003-gif/military-simulator.git
+cd military-simulator
+npm install
+npm run dev
+```
+
+Then open **http://localhost:8000** in your browser.
+
+Stop the server with `Ctrl+C` in that PowerShell window.
+
+Do **not** use `python -m http.server` for this version. It is a Node/Vite app, not a folder of static files.
+
+If `npm` is not recognized, install Node.js LTS, close PowerShell, open a new window, and run `node -v` then `npm -v` to confirm.
+
+## Try this prompt
 
 ```
 2 blue tanks stationed west of Kyiv; 1 blue SAM stationed covering the western approach; 2 red tanks advance from the east toward the city
 ```
 
-```
-1 red fighter transits from 50.50,30.70 toward Kyiv; no other units
-```
+1. Confirm the plan (should list **5** units).
+2. Play. Dashed rings = detection, solid rings = engagement.
+3. Shift-click to multi-select, switch to waypoint mode for group move. Ctrl+Z undoes.
 
-```
-3 blue infantry hold the bridge near 50.45,30.50
-```
+## Prompt templates
 
-## Combat
+Kyiv armor, Air CAP, Hold the line, Black Sea, Radar net — plus a structured helper to append clauses.
 
-Each unit class defines `domain`, `canTarget`, `health`, `damage`, ranges.  
-SHORAD → air only. Infantry → ground, air, naval, facility. etc.
+## Combat rules
 
-## Map tools
+- Phrase parser is the source of truth (no extra units).
+- Fire only after detection, in engagement range, if the unit can target that domain.
+- Magazines empty then reload.
+- ROE: Hold / Tight / Free. Friendly fire off unless enabled.
 
-- Drag markers to change start position  
-- Mode: Add unit / Add waypoint  
-- Delete selected  
+## Unit types you can name
 
-## Run
-
-```bash
-ollama pull qwen2.5:1.5b
-git clone https://github.com/randorton003-gif/military-simulator.git
-cd military-simulator
-python -m http.server 8000
-```
-
-Open http://localhost:8000
+tank, infantry, artillery, apc, fighter, bomber, helicopter, uav, destroyer, frigate, carrier, submarine, sam, shorad, radar, ciws, airbase, hq, depot, port
